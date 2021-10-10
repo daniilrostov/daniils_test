@@ -1,0 +1,12 @@
+#global config
+global:
+ scrape_interval: 15s
+ evaluation_interval: 5s
+ scrape_timeout: 10s
+ external_labels:
+  monitor: 'Daniils testing'
+scrape_configs:
+ - job_name: node
+   scrape_interval: 5s
+   static_configs:
+    - targets: ['ubuntu2004:9100']

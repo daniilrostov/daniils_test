@@ -1,0 +1,26 @@
+version: '3.2'
+services:
+ prometheus:
+  image: prom/prometheus:latest
+  restart: always
+  container_name: prometheus
+  ports:
+  - 9090:9090
+  command:
+  - --config.file=/etc/prometheus/prometheus.yml
+  volumes:
+  - /vagrant_data/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+
+ grafana:
+  image: grafana/grafana:latest
+  restart: always
+  container_name: grafana
+  volumes:
+   - /vagrant_data/grafana.ini:/etc/grafana/grafana.ini
+   - /vagrant_data/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+   - /vagrant_data/node-exporter-full.json:/usr/share/grafana/node-exporter-full.json
+  ports:
+   - 3000:3000
+  links:
+   - prometheus

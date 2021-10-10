@@ -1,0 +1,83 @@
+---
+- name: Testing Daniil
+  hosts: default
+  become: yes
+  
+  vars:
+    node_exporter_version: 1.2.2
+
+  tasks:
+  - name: Set Time Zone
+    when: ansible_date_time.tz != 'Europe/Moscow'
+    command: timedatectl set-timezone Europe/Moscow
+     
+  - name: Install aptitude using apt
+    apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+  - name: Install Docker
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'lsb-release', 'software-properties-common', 'python3-pip' ]
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+     url: https://download.docker.com/linux/ubuntu/gpg
+     state: present
+
+  - name: Add repo
+    apt_repository:
+     repo: deb https://download.docker.com/linux/ubuntu focal stable
+     state: present
+  
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+  - name: Install Docker Module for Python
+    pip: name={{ item }}
+    loop: [ 'docker', 'docker-compose' ]
+
+  - name: Install docker-compose
+    get_url:
+     url: https://github.com/docker/compose/releases/download/1.26.0/docker-compose-Linux-x86_64
+     dest: /usr/local/bin/docker-compose
+     mode: 'u+x,g+x'
+
+  - name: Download node exporter
+    get_url:
+     url: https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+     dest: /tmp
+ 
+  - name: Unarchive node exporter
+    unarchive:
+     remote_src: yes
+     src: /tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+     dest: /tmp
+   
+  - name: Move node exporter to /usr/local/bin    
+    copy:
+     src: /tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter
+     dest: /usr/local/bin/node_exporter
+     remote_src: yes
+     owner: root
+     group: root
+     mode: 0755
+     
+  - name: Install unit file to systemd
+    template:
+     src: node_exporter.service.j2
+     dest: /etc/systemd/system/node_exporter.service
+     owner: root
+     group: root
+     mode: 0600
+     
+  - name: Configure systemd to use service
+    systemd:
+     daemon_reload: yes
+     enabled: yes
+     state: started
+     name: node_exporter.service
+
+  - name: deploy Docker Compose stack
+    docker_compose:
+     project_src: /vagrant_data
+     files:
+     - docker-compose.yml 
